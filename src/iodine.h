@@ -7,18 +7,18 @@
 #define ASSERT_NO_PADDING(type, expected) _Static_assert(sizeof(type) == (expected), "Struct has padding")
 
 enum IodFieldType{
-  BYTE,
+  BYTE = 0,
   INT_16,
   UINT_16,
   INT_32,
   UINT_32,
+  F_32,
   INT_64,
   UINT_64,
+  F_64,
   INT_128,
   UINT_128,
-  F_32,
-  F_64,
-  IOD_STRUCT
+  IOD_STRUCT,
 };
 
 struct IodSTypeDescriptor{
