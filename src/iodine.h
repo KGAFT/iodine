@@ -8,13 +8,13 @@
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
   
- enum IodResult{
+typedef enum IodResult{
   IOD_SUCCESS = 0,
   IOD_FAILED,
-  IOD_FAILED_INCORRECT_SIZE
-};
+  IOD_INCORRECT_SIZE
+} IodResult;
 
-enum IodFieldTypeEn{
+typedef enum IodFieldTypeEn{
   BYTE = 0,
   INT_16,
   UINT_16,
@@ -27,33 +27,36 @@ enum IodFieldTypeEn{
   INT_128,
   UINT_128,
   IOD_STRUCT,
-};
+} IodFieldTypeEn;
 
-struct IodFieldType{
+typedef struct IodFieldType{
   uint64_t explicitSize;
+  uint64_t offset;
   uint64_t type;
-};
+} IodFieldType;
 
-ASSERT_NO_PADDING(struct IodFieldType, sizeof(uint64_t)+sizeof(uint64_t));
+ASSERT_NO_PADDING(IodFieldType, sizeof(uint64_t)*3);
 
-struct IodSTypeDescriptor{
+typedef struct IodSTypeDescriptor{
   uint32_t expectedValue;
-};
+} IodSTypeDescriptor;
 
-struct IodStructFields{
-  struct IodFieldType* fields;
+typedef struct IodStructFields{
+  IodFieldType* fields;
   uint64_t* fieldAmount;
   uint64_t entriesAmount;
-};
+} IodStructFields;
 
-struct IodStructDescriptor{
-  struct IodFieldType* fields;
+typedef struct IodStructDescriptor{
+  IodFieldType* fields;
   uint64_t* fieldAmount;
   uint64_t entriesAmount;
   uint64_t size;
-};
+} IodStructDescriptor;
+ASSERT_NO_PADDING(struct IodStructDescriptor, sizeof(void*)*2+sizeof(uint64_t)*2);
+
 //Accessor must be behind ASSERT_NO_PADDING and order of fields and accessor must be the same
-enum IodResult IodMakeStructDescriptor(struct IodStructFields* fields, void** pAccessorInOut,struct IodStructDescriptor* pDescriptorOut);
-void IodBeginStruct(void* buffer, size_t bufferSize);
+IodResult IodMakeStructDescriptor(IodStructFields* fields, void** pAccessorInOut, IodStructDescriptor* pDescriptorOut);
+IodResult IodBeginStruct(IodStructDescriptor* desc, void** accessor, void *buffer, size_t bufferSize);
 
 #endif
