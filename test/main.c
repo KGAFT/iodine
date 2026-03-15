@@ -36,9 +36,17 @@ int main() {
     fields.entriesAmount = 6;
     struct Acc acc;
     memset(&acc, 0, sizeof(struct Acc));
-    struct IodStructDescriptor desc;
-    enum IodResult res = IodMakeStructDescriptor(&fields, (void **) &acc, &desc);
+    IodStructDescriptor desc;
+    IodResult res = IodMakeStructDescriptor(&fields, (uint64_t*) &acc, &desc);
     printf("%i\n", res);
     printf("%i\n", (int) acc.fField);
+    printf("%i\n", (int) desc.size);
+    char buffer[1024];
+    res = IodBeginStruct(&desc, false, true, (uint64_t*)&acc, buffer, 1024);
+    printf("%i\n", res);
+    acc.arrField[33] = 255;
+    *acc.ffField = 222;
+    *acc.sField = 'h';
+
     return 0;
 }

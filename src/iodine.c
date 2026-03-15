@@ -70,7 +70,7 @@ uint64_t getSize(IodFieldType *field) {
 }
 
 IodResult IodMakeStructDescriptor(IodStructFields *fields, uint64_t *accessor,
-IodStructDescriptor *desc) {
+                                  IodStructDescriptor *desc) {
     if (fields->entriesAmount > 0) {
         SortedFieldsMap *fieldsMap = NULL;
         hmdefault(fieldsMap, 0);
@@ -80,14 +80,15 @@ IodStructDescriptor *desc) {
         }
         uint64_t len = hmlen(fieldsMap);
         initializeDesc(desc, len);
+        hmfree(fieldsMap);
 
         //Aligning from the most expensive type to the least expensive one
         uint64_t offsetCounter = 0;
         uint64_t descCounter = 0;
         for (int32_t i = IOD_STRUCT; i >= 0; i--) {
             for (uint64_t ii = 0; ii < fields->entriesAmount; ii++) {
-                if ((int32_t)fields->fields[ii].type == i) {
-                    uint64_t size = getSize(&fields->fields[ii])*fields->fieldAmount[ii];
+                if ((int32_t) fields->fields[ii].type == i) {
+                    uint64_t size = getSize(&fields->fields[ii]) * fields->fieldAmount[ii];
                     if (size == 0) {
                         return IOD_INCORRECT_SIZE;
                     }
@@ -101,38 +102,56 @@ IodStructDescriptor *desc) {
                 }
             }
         }
-        desc->size = offsetCounter;
+        desc->size = offsetCounter + (2 + 4 * fields->entriesAmount)* sizeof(uint64_t)  + sizeof(uint64_t) * fields->entriesAmount + 1;
         desc->entriesAmount = descCounter;
         return IOD_SUCCESS;
     }
     return IOD_FAILED;
 }
 
-void* writeDescriptor(void* buffer, const IodStructDescriptor* desc, bool systemEndian);
-void* writeAccessor(void* buffer, uint64_t* accessor, uint64_t fieldsAmount, bool systemEndian);
+void *writeDescriptor(void *buffer, const IodStructDescriptor *desc, bool systemEndian);
 
-IodResult IodBeginStruct(IodStructDescriptor* desc, bool hashCheck, uint64_t* accessor, void *buffer, size_t bufferSize) {
+void *writeAccessor(void *buffer, uint64_t *accessor, uint64_t fieldsAmount, bool systemEndian);
+
+IodResult IodBeginStruct(IodStructDescriptor *desc, bool hashCheck, bool le, uint64_t *accessor, void *buffer,
+                         size_t bufferSize) {
+    if (desc->size+hashCheck?2568/8:0 > bufferSize) {
+        return IOD_INCORRECT_SIZE;
+    }
+
     memset(buffer, 0, bufferSize);
+    bool systemEndian = true;
+    if (le && ENDIAN == 0) {
+        ((char*)buffer)[0] |= SYSTEM_DESCRIPTOR;
+        ((char*)buffer)[0] |= ((char)hashCheck) << 1;
+    } else {
+        systemEndian = false;
+        ((char*)buffer)[0] |= ((!ENDIAN)<<0);
+        ((char*)buffer)[0] |= ((char)hashCheck) << 1;
+    }
+
     uint64_t descStart = 1;
     if (hashCheck) {
-        descStart+=256/8;
+        descStart += 256 / 8;
     }
-    void* accBegin = writeDescriptor(buffer+descStart, desc, true);
-    void* dataBegin = writeAccessor(accBegin, accessor, desc->entriesAmount, true);
-
+    void *accBegin = writeDescriptor(buffer + descStart, desc, systemEndian);
+    void *dataBegin = writeAccessor(accBegin, accessor, desc->entriesAmount, systemEndian);
+    for (uint64_t i = 0; i < desc->entriesAmount; i++) {
+        accessor[i] = (uint64_t) dataBegin + accessor[i];
+    }
     return IOD_SUCCESS;
 }
 
 #define ENDI_CHECK_SWAP64(infoBuff, value, systemEndian) infoBuff = value; if (!systemEndian){bswap64(infoBuff);}
 #define WRITE_AND_INCREMENT(buffer_ptr, value_ptr, type) memcpy(buffer_ptr, value_ptr, sizeof(type)); buffer_ptr += sizeof(type);
 
-void* writeDescriptor(void* buffer, const IodStructDescriptor* desc, bool systemEndian) {
+void *writeDescriptor(void *buffer, const IodStructDescriptor *desc, bool systemEndian) {
     uint64_t infoBuff = 0;
     ENDI_CHECK_SWAP64(infoBuff, desc->entriesAmount, systemEndian)
     WRITE_AND_INCREMENT(buffer, &infoBuff, uint64_t)
     ENDI_CHECK_SWAP64(infoBuff, desc->size, systemEndian)
     WRITE_AND_INCREMENT(buffer, &infoBuff, uint64_t)
-    for (uint64_t i = 0; i<desc->entriesAmount; i++) {
+    for (uint64_t i = 0; i < desc->entriesAmount; i++) {
         //Writing field meta
         IodFieldType *field = &desc->fields[i];
         ENDI_CHECK_SWAP64(infoBuff, field->explicitSize, systemEndian)
@@ -152,9 +171,9 @@ void* writeDescriptor(void* buffer, const IodStructDescriptor* desc, bool system
     return buffer;
 }
 
-void* writeAccessor(void* buffer, uint64_t* accessor, uint64_t fieldsAmount, bool systemEndian) {
+void *writeAccessor(void *buffer, uint64_t *accessor, uint64_t fieldsAmount, bool systemEndian) {
     uint64_t infoBuff = 0;
-    for (uint64_t i = 0; i<fieldsAmount; i++) {
+    for (uint64_t i = 0; i < fieldsAmount; i++) {
         ENDI_CHECK_SWAP64(infoBuff, accessor[i], systemEndian)
         WRITE_AND_INCREMENT(buffer, &infoBuff, uint64_t)
     }

@@ -56,7 +56,7 @@ typedef struct IodStructDescriptor{
 ASSERT_NO_PADDING(struct IodStructDescriptor, sizeof(void*)*2+sizeof(uint64_t)*2);
 
 //Accessor must be behind ASSERT_NO_PADDING and order of fields and accessor must be the same
-IodResult IodMakeStructDescriptor(IodStructFields* fields, void** pAccessorInOut, IodStructDescriptor* pDescriptorOut);
-IodResult IodBeginStruct(IodStructDescriptor* desc, void** accessor, void *buffer, size_t bufferSize);
+IodResult IodMakeStructDescriptor(IodStructFields *fields, uint64_t *accessor, IodStructDescriptor *desc);
+IodResult IodBeginStruct(IodStructDescriptor* desc, bool hashCheck, bool le, uint64_t* accessor, void *buffer, size_t bufferSize);
 
 #endif
